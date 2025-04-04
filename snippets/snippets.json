@@ -686,36 +686,6 @@
 		],
 		"description": "Inserts a template for a com.fibaro.fireDetector"
 	},
-	"base": {
-		"scope": "lua",
-		"prefix": "base",
-		"body": [
-			"if require and not QuickApp then require('hc3emu') end",
-			"",
-			"--%name=${1:MyQA}",
-			"--%type=base",
-			"--%description=${2:My description}",
-			"--%webui=true",
-			"",
-			"",
-			"-- To update controls you can use method self:updateView(<component ID>, <component property>, <desired value>). Eg:  ",
-			"-- self:updateView(\"slider\", \"value\", \"55\") ",
-			"-- self:updateView(\"button1\", \"text\", \"MUTE\") ",
-			"-- self:updateView(\"label\", \"text\", \"TURNED ON\") ",
-			"",
-			"-- This is QuickApp inital method. It is called right after your QuickApp starts (after each save or on gateway startup). ",
-			"-- Here you can set some default values, setup http connection or get QuickApp variables.",
-			"-- To learn more, please visit: ",
-			"--    * https://manuals.fibaro.com/home-center-3/",
-			"--    * https://manuals.fibaro.com/home-center-3-quick-apps/",
-			"",
-			"function QuickApp:onInit()",
-			"    self:debug(\"onInit\")",
-			"end",
-			""
-		],
-		"description": "Inserts a template for a base"
-	},
 	"heatDetector": {
 		"scope": "lua",
 		"prefix": "com.fibaro.heatDetector",
@@ -746,7 +716,7 @@
 			"--%webui=true",
 			"",
 			"-- Thermostat auto should handle actions: setThermostatMode, setCoolingThermostatSetpoint, setHeatingThermostatSetpoint",
-			"-- Proeprties that should be updated:",
+			"-- Properties that should be updated:",
 			"-- * supportedThermostatModes - array of modes supported by the thermostat eg. {\"Auto\", \"Off\", \"Heat\", \"Cool\"}",
 			"-- * thermostatMode - current mode of the thermostat",
 			"-- * coolingThermostatSetpoint - set point for cooling, supported units: \"C\" - Celsius, \"F\" - Fahrenheit",
@@ -1027,5 +997,46 @@
 			""
 		],
 		"description": "Inserts a template for a com.fibaro.baseShutter"
+	},
+	"QuickAppChild": {
+		"scope": "lua",
+		"prefix": "QuickAppChild",
+		"body": [
+			"class '${1:MyChild}'(QuickAppChild)",
+			"function ${1:MyChild}:__init()",
+			"    self:debug(self.name,self.id)",
+			"end",
+			"function ${1:MyChild}:__tostring()",
+			"    return string.format(\"%s:%s\",self.name..self.id)",
+			"end"
+		],
+		"description": "Inserts a template for a QuickAppChild"
+	},
+	"HTTPClient": {
+		"scope": "lua",
+		"prefix": "HTTPClient",
+		"body": [
+			"net.HTTPClient():request(\"${1:http://}\",{",
+			"  options={",
+			"    method=\"${2:GET}\",",
+			"    headers={",
+			"      [\"Content-Type\"]=\"application/json\",",
+			"      [\"Accept\"]=\"application/json\",",
+			"    },",
+			"  },",
+			"  success = function(response)",
+			"    if response.status == 200 then",
+			"      local data = json.decode(response.data)",
+			"      fibaro.debug(__TAG,\"response:\", data)",
+			"    else",
+			"      fibaro.debug(__TAG,\"error:\", response.status, response.data)",
+			"    end",
+			"  end,",
+			"  error = function(err)",
+			"    fibaro.debug(__TAG,\"error:\", err)",
+			"  end,",
+			"})"
+		],
+		"description": "Inserts a template for a HTTPClient request"
 	}
 }

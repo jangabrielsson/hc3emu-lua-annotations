@@ -1,70 +1,45 @@
 import * as vscode from 'vscode';
+import { configureLuaLanguageServer } from './luaLanguageServer';
+import { HC3EmuTaskProvider } from './taskProvider';
 
-export function activate(context: vscode.ExtensionContext) {
-    setExternalLibrary(context, 'Dota2-Library', true);
-}
+export async function activate(context: vscode.ExtensionContext) {
+    try {
+        const disposables: vscode.Disposable[] = [];
+        
+        // Register task provider
+        const taskProvider = vscode.tasks.registerTaskProvider(
+            HC3EmuTaskProvider.taskType, 
+            new HC3EmuTaskProvider()
+        );
+        disposables.push(taskProvider);
+        
+        context.subscriptions.push(...disposables);
 
-export function deactivate(context: vscode.ExtensionContext) {
-    setExternalLibrary(context, 'Dota2-Library', false);
-}
+        // Configure Lua language server
+        await configureLuaLanguageServer(context).catch(err => {
+            console.error('Failed to configure Lua language server:', err);
+        });
 
-function setExternalLibrary(context: vscode.ExtensionContext, folder: string, enable: boolean) {
-    const extensionId = context.extension.id; // this id is case sensitive
-    const extensionPath = vscode.extensions.getExtension(extensionId)?.extensionPath;
-    const folderPath = extensionPath + '\\' + folder;
-    console.log('Library path: ' + folderPath);
-    const config = vscode.workspace.getConfiguration('Lua');
-    const library: string[] | undefined = config.get('workspace.library');
-    if (library && extensionPath) {
-        // remove any older versions of our path e.g. "publisher.name-0.0.1"
-        for (let i = library.length - 1; i >= 0; i--) {
-            const el = library[i];
-            const isSelfExtension = el.indexOf(extensionId) > -1;
-            const isCurrentVersion = el.indexOf(extensionPath) > -1;
-            if (isSelfExtension && !isCurrentVersion) {
-                library.splice(i, 1);
-            }
-        }
-        const index = library.indexOf(folderPath);
-        if (enable) {
-            if (index == -1) {
-                library.push(folderPath);
-            }
-        } else {
-            if (index > -1) {
-                library.splice(index, 1);
-            }
-        }
-        config.update('workspace.library', library, vscode.ConfigurationTarget.Global);
+        // Handle errors
+        process.on('uncaughtException', (error) => {
+            console.error('Uncaught Exception:', error);
+        });
+
+        process.on('unhandledRejection', (error) => {
+            console.error('Unhandled Rejection:', error);
+        });
+
+    } catch (error) {
+        console.error('Extension activation failed:', error);
+        throw error; // Re-throw to notify VS Code of activation failure
     }
+}
 
-    // force version
-    config.update('runtime.version', 'LuaJIT', vscode.ConfigurationTarget.Global);
-
-    // Lua.workspace.checkThirdParty
-    config.update('workspace.checkThirdParty', false, vscode.ConfigurationTarget.Global);
-
-    // Add diagnostics.disable
-    const disabledDiagnosticList = ['lowercase-global', 'duplicate-set-field'];
-    const disabledDiagnostics: string[] | undefined = config.get('diagnostics.disable');
-    if (disabledDiagnostics) {
-        let changed = false;
-        for (const v of disabledDiagnosticList) {
-            if (!disabledDiagnostics.includes(v)) {
-                disabledDiagnostics.push(v);
-                changed = true;
-            }
-        }
-        config.update(
-            'diagnostics.disable',
-            [...disabledDiagnostics],
-            vscode.ConfigurationTarget.Global
-        );
-    } else {
-        config.update(
-            'diagnostics.disable',
-            [...disabledDiagnosticList],
-            vscode.ConfigurationTarget.Global
-        );
+export function deactivate() {
+    // Cleanup
+    try {
+        // Add any cleanup code here
+    } catch (error) {
+        console.error('Extension deactivation failed:', error);
     }
 }

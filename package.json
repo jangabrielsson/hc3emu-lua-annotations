@@ -1,10 +1,10 @@
 {
-    "name": "hc3emu-lua-annotations",
-    "displayName": "Hc3emu Lua Annotations",
-    "description": "Hc3emu lua api annotations for lua-language-server",
-    "version": "1.0.0",
+    "name": "hc3emu-heler",
+    "displayName": "HC3Emu helper",
+    "description": "Snippets and Lua Language Server support for HC3Emu Lua scripts.",
+    "version": "0.0.5",
     "license": "MIT",
-    "publisher": "jgab",
+    "publisher": "GsonSoft-development",
     "icon": "logo.png",
     "keywords": [
         "Lua",
@@ -17,8 +17,7 @@
         "url": "https://github.com/jangabrielsson/hc3emu-lua-annotations"
     },
     "categories": [
-        "Linters",
-        "Programming Languages"
+        "Other"
     ],
     "extensionDependencies": [
         "sumneko.lua"
@@ -27,7 +26,8 @@
         "vscode": "^1.77.0"
     },
     "activationEvents": [
-        "onLanguage:lua"
+        "onLanguage:lua",
+        "workspaceContains:**/*.lua"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -36,19 +36,50 @@
                 "language": "lua",
                 "path": "./snippets/snippets.json"
             }
+        ],
+        "configuration": {
+            "title": "HC3 Emulator",
+            "properties": {
+                "Lua.workspace.library": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Lua library paths"
+                }
+            }
+        },
+        "taskDefinitions": [
+            {
+                "type": "hc3emu",
+                "required": ["script"],
+                "properties": {
+                    "script": {
+                        "type": "string",
+                        "description": "The script to run"
+                    },
+                    "args": {
+                        "type": "array",
+                        "description": "Additional arguments",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./"
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
         "@types/node": "^18.16.3",
         "@types/vscode": "^1.77.0",
-        "axios": "^1.4.0",
-        "octokit": "^2.0.14",
-        "ts-node": "^10.9.1",
-        "typescript": "^5.0.4"
+        "typescript": "^5.0.4",
+        "vsce": "^2.15.0"
     }
 }

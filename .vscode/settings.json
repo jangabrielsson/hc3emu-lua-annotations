@@ -14,6 +14,6 @@
         "format_line": "false"
     },
     "Lua.workspace.library": [
-        "c:/Users/robin/.vscode/extensions/sumneko.lua-3.6.20-win32-x64/server/meta/387091a0"
+        "/Users/jangabrielsson/.vscode/extensions/gesonsoft-development.hc3emu-extension-0.0.3/hc3emu-library"
     ]
 }
