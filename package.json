@@ -1,0 +1,54 @@
+{
+    "name": "hc3emu-lua-annotations",
+    "displayName": "Hc3emu Lua Annotations",
+    "description": "Hc3emu lua api annotations for lua-language-server",
+    "version": "1.0.0",
+    "license": "MIT",
+    "publisher": "jgab",
+    "icon": "logo.png",
+    "keywords": [
+        "Lua",
+        "Hc3Emu",
+        "Fibaro",
+        "Home Center",
+        "HC3"
+    ],
+    "repository": {
+        "url": "https://github.com/jangabrielsson/hc3emu-lua-annotations"
+    },
+    "categories": [
+        "Linters",
+        "Programming Languages"
+    ],
+    "extensionDependencies": [
+        "sumneko.lua"
+    ],
+    "engines": {
+        "vscode": "^1.77.0"
+    },
+    "activationEvents": [
+        "onLanguage:lua"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "snippets": [
+            {
+                "language": "lua",
+                "path": "./snippets/snippets.json"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "^18.16.3",
+        "@types/vscode": "^1.77.0",
+        "axios": "^1.4.0",
+        "octokit": "^2.0.14",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.0.4"
+    }
+}
