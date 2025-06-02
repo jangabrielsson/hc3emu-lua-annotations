@@ -43,7 +43,7 @@
                 "Lua.workspace.library": {
                     "type": "array",
                     "default": [],
-                    "description": "Lua library paths"
+                    "description": "Lua library paths for user-specific additions. For the extension's built-in library, it's added automatically."
                 }
             }
         },
@@ -67,7 +67,12 @@
                     }
                 }
             }
-        ]
+        ],
+        "lua": {
+            "library": [
+                "./hc3emu-library"
+            ]
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
