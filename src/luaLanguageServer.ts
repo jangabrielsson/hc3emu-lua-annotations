@@ -4,14 +4,32 @@ import { luaGlobals } from './config/luaGlobals';
 
 export async function configureLuaLanguageServer(context: vscode.ExtensionContext) {
     try {
-        const config = vscode.workspace.getConfiguration('Lua');
+        console.log('HC3Emu: Configuring Lua Language Server...');
+        const config = vscode.workspace.getConfiguration();
         const libraryPath = path.join(context.extensionPath, 'hc3emu-library');
         
-        await config.update('workspace.library', [libraryPath], vscode.ConfigurationTarget.Workspace);
-        await config.update('completion.callSnippet', 'Replace', vscode.ConfigurationTarget.Global);
-        await config.update('Lua.diagnostics.enable', true, vscode.ConfigurationTarget.Global);
-        await config.update('Lua.diagnostics.globals', luaGlobals, vscode.ConfigurationTarget.Global);
+        // Set up library paths
+        const existingLibrary = config.get<string[]>('Lua.workspace.library', []);
+        if (!existingLibrary.includes(libraryPath)) {
+            console.log(`HC3Emu: Adding library path: ${libraryPath}`);
+            await config.update('Lua.workspace.library', 
+                [...existingLibrary, libraryPath], 
+                vscode.ConfigurationTarget.Global);
+        }
+
+        // Configure Lua settings with correct property names
+        await config.update('Lua.completion.callSnippet', 'Replace', vscode.ConfigurationTarget.Global);
+        console.log('HC3Emu: Set Lua completion call snippet');
+        
+        // Configure diagnostics (remove the duplicate "Lua." prefix)
+        await config.update('Lua.diagnostics.globals', 
+            ['fibaro', 'api', 'plugin', 'net', 'json', 'class', 'QuickApp', 'QuickAppChild', 'onAction', 'onUIEvent'], 
+            vscode.ConfigurationTarget.Global);
+        console.log('HC3Emu: Set Lua global variables');
+        
+        console.log('HC3Emu: Lua Language Server configuration completed');
     } catch (error) {
-        console.error('Failed to configure Lua language server:', error);
+        console.error('HC3Emu: Failed to configure Lua language server:', error);
+        // Don't throw the error, just log it so the extension continues to work
     }
 }
