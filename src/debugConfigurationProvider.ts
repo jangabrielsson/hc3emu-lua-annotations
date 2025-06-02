@@ -1,110 +1,126 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 
-// Interface matching the structure of configurations in hc3emu2launch.json
-interface LuaMobDebugLaunchConfig extends vscode.DebugConfiguration {
-    // Properties from hc3emu2launch.json for luaMobDebug
+interface HC3EmuLaunchConfig {
+    name: string;
+    type: string;
+    request: string;
+    program?: string;
+    args?: string[];
+    arguments?: string[];
+    cwd?: string;
     workingDirectory?: string;
     sourceBasePath?: string;
     listenPort?: number;
     stopOnEntry?: boolean;
     sourceEncoding?: string;
     interpreter?: string;
-    arguments?: string[];
     listenPublicly?: boolean;
-    // Standard DebugConfiguration properties like 'name', 'type', 'request' are inherited
-    // 'program' is not used by this specific luaMobDebug config, but good to be aware of
+    env?: { [key: string]: string };
+    console?: string;
+    [key: string]: any;
 }
 
-// Interface for the overall structure of hc3emu2launch.json
-interface Hc3emu2LaunchJsonFormat {
+interface HC3EmuLaunchJsonFormat {
     version: string;
-    configurations: LuaMobDebugLaunchConfig[];
+    configurations: HC3EmuLaunchConfig[];
 }
 
-export class HC3EmuLuaMobDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+export class HC3EmuDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+    static debugType = 'luaMobDebug';
 
-    /**
-     * This method is called when VS Code needs to provide debug configurations.
-     * For example, when the user opens the "Run and Debug" view and no launch.json exists,
-     * or when they click "Add Configuration..." in an existing launch.json.
-     *
-     * It reads configurations directly from 'hc3emu2launch.json' if it exists in the workspace root.
-     */
-    provideDebugConfigurations(folder: vscode.WorkspaceFolder | undefined, token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration[]> {
-        const launchJsonPath = folder ? path.join(folder.uri.fsPath, 'hc3emu2launch.json') : undefined;
-        let providedConfigs: LuaMobDebugLaunchConfig[] = [];
-
-        if (launchJsonPath && fs.existsSync(launchJsonPath)) {
-            try {
-                const content = fs.readFileSync(launchJsonPath, 'utf8');
-                const json = JSON.parse(content) as Hc3emu2LaunchJsonFormat;
-                
-                // Filter for configurations that are of type 'luaMobDebug' and add them
-                if (json.configurations && Array.isArray(json.configurations)) {
-                    providedConfigs = json.configurations.filter(c => c.type === 'luaMobDebug');
-                }
-            } catch (e) {
-                console.error(`Error reading or parsing hc3emu2launch.json: ${e}`);
-                vscode.window.showErrorMessage(`Error reading or parsing hc3emu2launch.json. See console for details.`);
-                // Return empty or a default, user-friendly config if parsing fails
-                return [
-                    {
-                        name: "Error: Could not load from hc3emu2launch.json",
-                        type: "luaMobDebug", // Or a generic type
-                        request: "launch",
-                        // Add minimal properties to make it a valid, though non-functional, entry
-                    }
-                ];
-            }
-        }
-
-        if (providedConfigs.length > 0) {
-            return providedConfigs;
-        } else {
-            // If hc3emu2launch.json is not found, or contains no luaMobDebug configurations,
-            // you could provide a default placeholder or an empty array.
-            // For this request, we only provide what's in the file.
-            // If the file is missing/empty, the user won't see these specific configurations 
-            // when creating a launch.json for the first time via this provider.
-            // They would need to manually copy them or ensure hc3emu2launch.json is present.
-            vscode.window.showInformationMessage('hc3emu2launch.json not found or no luaMobDebug configurations defined. Please create it with your luaMobDebug configurations.');
-            return []; 
-        }
+    async provideDebugConfigurations(folder: vscode.WorkspaceFolder | undefined): Promise<vscode.DebugConfiguration[]> {
+        console.log('HC3EmuDebugConfigProvider: provideDebugConfigurations called');
+        const configs = await this.loadLaunchConfigsFromFile();
+        console.log(`HC3EmuDebugConfigProvider: Providing ${configs.length} configurations`);
+        return configs;
     }
 
-    /**
-     * Massage a debug configuration just before a debug session is started.
-     * For this provider, we assume the configurations from hc3emu2launch.json are complete
-     * and don't need further modification. However, you could add defaults here if needed.
-     */
-    resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-        // If the configuration is coming from our provider (i.e., it was read from hc3emu2launch.json)
-        // and it's of type luaMobDebug, we can assume it's already correctly formatted.
-        if (config.type === 'luaMobDebug') {
-            // You could add/override specific properties here if necessary
-            // For example, ensuring a port if not set, though luaMobDebug likely has its own defaults.
-            // config.listenPort = config.listenPort || 8172;
+    async resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration): Promise<vscode.DebugConfiguration | undefined> {
+        console.log('HC3EmuDebugConfigProvider: resolveDebugConfiguration called', config);
+        
+        // If this is an empty configuration, provide a default one
+        if (!config.type && !config.request && !config.name) {
+            console.log('HC3EmuDebugConfigProvider: Providing default configuration');
+            const configs = await this.loadLaunchConfigsFromFile();
+            if (configs.length > 0) {
+                return configs[0];
+            }
         }
         
-        // If launch.json is missing or empty, and the user tries to run an unnamed configuration
-        // for a Lua file, you *could* try to provide a default on-the-fly. 
-        // However, the main goal here is to serve from hc3emu2launch.json.
-        if (!config.type && !config.request && !config.name) {
-            const editor = vscode.window.activeTextEditor;
-            if (editor && editor.document.languageId === 'lua') {
-                // This is an opportunity to suggest a default configuration if the user
-                // tries to F5 without a launch.json. We will return a config that 
-                // matches the structure of hc3emu2launch.json.
-                // This specific config might not be in hc3emu2launch.json but is a sensible default.
-                // For the strict request of only providing from the file, this part could be removed.
-                vscode.window.showInformationMessage('No launch configuration selected. You can add one from hc3emu2launch.json or create a launch.json.');
-                // Returning undefined will likely cause VS Code to prompt the user to create a launch.json.
-                return undefined; 
+        return config;
+    }
+
+    private async loadLaunchConfigsFromFile(): Promise<vscode.DebugConfiguration[]> {
+        console.log('HC3EmuDebugConfigProvider: Loading launch configs from file...');
+        const discoveredConfigs: vscode.DebugConfiguration[] = [];
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            console.log("HC3EmuDebugConfigProvider: No workspace folder open, cannot load hc3emu2launch.json.");
+            return discoveredConfigs;
+        }
+
+        // Try multiple possible locations for the launch file
+        const possiblePaths = [
+            'hc3emu2launch.json',           // Root of workspace
+            '../hc3emu2launch.json',        // Parent directory
+            '../../hc3emu2launch.json'      // Grandparent directory
+        ];
+
+        let launchJsonUri: vscode.Uri | null = null;
+        let launchJsonString: string = '';
+
+        for (const relativePath of possiblePaths) {
+            try {
+                const candidateUri = vscode.Uri.joinPath(workspaceFolders[0].uri, relativePath);
+                console.log(`HC3EmuDebugConfigProvider: Trying launch file at: ${candidateUri.fsPath}`);
+                
+                const fileContent = await vscode.workspace.fs.readFile(candidateUri);
+                launchJsonString = Buffer.from(fileContent).toString('utf8');
+                launchJsonUri = candidateUri;
+                console.log(`HC3EmuDebugConfigProvider: Found launch file at: ${candidateUri.fsPath}`);
+                break;
+            } catch (error: any) {
+                if (error.code === 'FileNotFound') {
+                    console.log(`HC3EmuDebugConfigProvider: File not found at: ${vscode.Uri.joinPath(workspaceFolders[0].uri, relativePath).fsPath}`);
+                } else {
+                    console.error(`HC3EmuDebugConfigProvider: Error reading file at ${relativePath}:`, error);
+                }
             }
         }
 
-        return config; // Return the configuration, possibly modified.
+        if (!launchJsonUri) {
+            console.log('HC3EmuDebugConfigProvider: No hc3emu2launch.json file found in any expected location');
+            return discoveredConfigs;
+        }
+
+        try {
+            console.log(`HC3EmuDebugConfigProvider: File content loaded, length: ${launchJsonString.length}`);
+            
+            const launchJson = JSON.parse(launchJsonString) as HC3EmuLaunchJsonFormat;
+            console.log(`HC3EmuDebugConfigProvider: JSON parsed, found ${launchJson.configurations?.length || 0} configurations`);
+
+            if (launchJson && launchJson.configurations && Array.isArray(launchJson.configurations)) {
+                for (const config of launchJson.configurations) {
+                    console.log(`HC3EmuDebugConfigProvider: Processing config: "${config.name}"`);
+                    if (config.name && config.type && config.request) {
+                        discoveredConfigs.push(config);
+                        console.log(`HC3EmuDebugConfigProvider: Successfully added config: "${config.name}"`);
+                    } else {
+                        console.warn(`HC3EmuDebugConfigProvider: Skipping config due to missing required fields:`, config);
+                    }
+                }
+            } else {
+                console.warn('HC3EmuDebugConfigProvider: Invalid JSON structure or no configurations array found');
+            }
+        } catch (error: any) {
+            console.error(`HC3EmuDebugConfigProvider: Error parsing JSON from ${launchJsonUri.fsPath}:`, error);
+            if (error instanceof SyntaxError) {
+                console.error('HC3EmuDebugConfigProvider: JSON syntax error:', error.message);
+            }
+        }
+        
+        console.log(`HC3EmuDebugConfigProvider: Returning ${discoveredConfigs.length} discovered configurations`);
+        return discoveredConfigs;
     }
 }

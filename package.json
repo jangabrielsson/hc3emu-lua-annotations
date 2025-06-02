@@ -40,13 +40,61 @@
         "configuration": {
             "title": "HC3 Emulator",
             "properties": {
-                "Lua.workspace.library": {
-                    "type": "array",
-                    "default": [],
-                    "description": "Lua library paths for user-specific additions. For the extension's built-in library, it's added automatically."
+                "hc3emu.enableDebugLogging": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable debug logging for HC3 Emulator extension"
                 }
             }
         },
+        "debuggers": [
+            {
+                "type": "luaMobDebug",
+                "label": "HC3 Lua Mobile Debug",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": ["program"],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Path to the Lua file to debug",
+                                "default": "${workspaceFolder}/main.lua"
+                            },
+                            "args": {
+                                "type": "array",
+                                "description": "Command line arguments",
+                                "default": []
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Working directory",
+                                "default": "${workspaceFolder}"
+                            }
+                        }
+                    }
+                },
+                "configurationSnippets": [
+                    {
+                        "label": "HC3 QuickApp Debug",
+                        "description": "Debug a HC3 QuickApp",
+                        "body": {
+                            "name": "HC3 QuickApp Debug",
+                            "type": "luaMobDebug",
+                            "request": "launch",
+                            "program": "${workspaceFolder}/main.lua",
+                            "cwd": "${workspaceFolder}",
+                            "args": []
+                        }
+                    }
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "hc3emu.installDebugConfigs",
+                "title": "Install HC3Emu Debug Configurations"
+            }
+        ],
         "taskDefinitions": [
             {
                 "type": "hc3emu",

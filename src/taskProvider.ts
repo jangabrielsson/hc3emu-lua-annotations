@@ -66,17 +66,21 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
     }
 
     public provideTasks(): vscode.ProviderResult<vscode.Task[]> {
+        console.log('HC3EmuTaskProvider: provideTasks() called');
         if (this.cachedTasks) {
+            console.log(`HC3EmuTaskProvider: Returning ${this.cachedTasks.length} cached tasks`);
             return this.cachedTasks;
         }
         if (!this.tasksPromise) {
+            console.log('HC3EmuTaskProvider: Loading tasks from file...');
             this.tasksPromise = this.loadTasksFromFile().then(tasks => {
+                console.log(`HC3EmuTaskProvider: Loaded ${tasks.length} tasks from file`);
                 this.cachedTasks = tasks;
                 return tasks;
             }).catch(err => {
+                console.error("HC3EmuTaskProvider: Failed to load tasks:", err);
                 this.tasksPromise = undefined;
                 this.cachedTasks = undefined;
-                console.error("Failed to load tasks for HC3Emu provider:", err);
                 vscode.window.showErrorMessage("Failed to load hc3emu tasks. See console for details.");
                 return [];
             });
@@ -85,6 +89,7 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
     }
 
     public resolveTask(task: vscode.Task): vscode.Task | undefined {
+        console.log('HC3EmuTaskProvider: resolveTask() called for task:', task.name);
         const definition = task.definition as HC3EmuTaskDefinition;
 
         // Check if this task definition is something our provider understands
@@ -99,50 +104,83 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
     }
 
     private async loadTasksFromFile(): Promise<vscode.Task[]> {
+        console.log('HC3EmuTaskProvider: loadTasksFromFile() starting...');
         const discoveredTasks: vscode.Task[] = [];
         const workspaceFolders = vscode.workspace.workspaceFolders;
 
         if (!workspaceFolders || workspaceFolders.length === 0) {
-            console.log("No workspace folder open, cannot load hc3emu2tasks.json.");
-            return discoveredTasks; // No workspace, no tasks from file
+            console.log("HC3EmuTaskProvider: No workspace folder open, cannot load hc3emu2tasks.json.");
+            return discoveredTasks;
         }
 
-        // Assuming hc3emu2tasks.json is in the root of the first workspace folder.
-        // You might want to make this path configurable or search more broadly.
-        const tasksJsonUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'hc3emu2tasks.json');
+        // Try multiple possible locations for the tasks file
+        const possiblePaths = [
+            'hc3emu2tasks.json',           // Root of workspace
+            '../hc3emu2tasks.json',        // Parent directory
+            '../../hc3emu2tasks.json'      // Grandparent directory
+        ];
+
+        let tasksJsonUri: vscode.Uri | null = null;
+        let tasksJsonString: string = '';
+
+        for (const relativePath of possiblePaths) {
+            try {
+                const candidateUri = vscode.Uri.joinPath(workspaceFolders[0].uri, relativePath);
+                console.log(`HC3EmuTaskProvider: Trying tasks file at: ${candidateUri.fsPath}`);
+                
+                const fileContent = await vscode.workspace.fs.readFile(candidateUri);
+                tasksJsonString = Buffer.from(fileContent).toString('utf8');
+                tasksJsonUri = candidateUri;
+                console.log(`HC3EmuTaskProvider: Found tasks file at: ${candidateUri.fsPath}`);
+                break;
+            } catch (error: any) {
+                if (error.code === 'FileNotFound') {
+                    console.log(`HC3EmuTaskProvider: File not found at: ${vscode.Uri.joinPath(workspaceFolders[0].uri, relativePath).fsPath}`);
+                } else {
+                    console.error(`HC3EmuTaskProvider: Error reading file at ${relativePath}:`, error);
+                }
+            }
+        }
+
+        if (!tasksJsonUri) {
+            console.log('HC3EmuTaskProvider: No hc3emu2tasks.json file found in any expected location');
+            return discoveredTasks;
+        }
 
         try {
-            const fileContent = await vscode.workspace.fs.readFile(tasksJsonUri);
-            const tasksJson = JSON.parse(Buffer.from(fileContent).toString('utf8')) as Hc3Emu2TasksJsonFormat;
+            console.log(`HC3EmuTaskProvider: File content loaded, length: ${tasksJsonString.length}`);
+            
+            const tasksJson = JSON.parse(tasksJsonString) as Hc3Emu2TasksJsonFormat;
+            console.log(`HC3EmuTaskProvider: JSON parsed, found ${tasksJson.tasks?.length || 0} tasks`);
 
             if (tasksJson && tasksJson.tasks && Array.isArray(tasksJson.tasks)) {
                 for (const taskConfig of tasksJson.tasks) {
-                    // taskConfig is an object from the "tasks" array in hc3emu2tasks.json
-                    if (taskConfig.label && taskConfig.command) { // Basic validation
+                    console.log(`HC3EmuTaskProvider: Processing task: "${taskConfig.label}"`);
+                    if (taskConfig.label && taskConfig.command) {
                         const definition: HC3EmuTaskDefinition = {
-                            type: HC3EmuTaskProvider.taskType, // Our task type
-                            label: taskConfig.label,           // Will be the task name
+                            type: HC3EmuTaskProvider.taskType,
+                            label: taskConfig.label,
                             command: taskConfig.command,
                             args: taskConfig.args || []
                         };
-                        discoveredTasks.push(this.buildVscodeTask(definition));
+                        const task = this.buildVscodeTask(definition);
+                        discoveredTasks.push(task);
+                        console.log(`HC3EmuTaskProvider: Successfully added task: "${taskConfig.label}"`);
                     } else {
-                        console.warn(`HC3Emu TaskProvider: Skipping task from hc3emu2tasks.json due to missing 'label' or 'command':`, taskConfig);
+                        console.warn(`HC3EmuTaskProvider: Skipping task due to missing label or command:`, taskConfig);
                     }
                 }
             } else {
-                console.log(`HC3Emu TaskProvider: No tasks found or incorrect format in ${tasksJsonUri.fsPath}`);
+                console.warn('HC3EmuTaskProvider: Invalid JSON structure or no tasks array found');
             }
         } catch (error: any) {
-            // File might not exist or be malformed. This is not necessarily a critical error.
-            // It just means no tasks will be auto-detected from this file.
-            if (error.code === 'FileNotFound') {
-                console.log(`HC3Emu TaskProvider: hc3emu2tasks.json not found at ${tasksJsonUri.fsPath}. No tasks will be loaded from it.`);
-            } else {
-                console.error(`HC3Emu TaskProvider: Error loading tasks from ${tasksJsonUri.fsPath}:`, error);
-                vscode.window.showWarningMessage(`Could not load tasks from hc3emu2tasks.json: ${error.message}`);
+            console.error(`HC3EmuTaskProvider: Error parsing JSON from ${tasksJsonUri.fsPath}:`, error);
+            if (error instanceof SyntaxError) {
+                console.error('HC3EmuTaskProvider: JSON syntax error:', error.message);
             }
         }
+        
+        console.log(`HC3EmuTaskProvider: Returning ${discoveredTasks.length} discovered tasks`);
         return discoveredTasks;
     }
 }

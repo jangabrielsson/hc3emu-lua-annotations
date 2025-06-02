@@ -1,9 +1,8 @@
 {
-  
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "hc3emu2: Current File", 
+      "name": "hc3emu2: Current File",
       "type": "luaMobDebug",
       "request": "launch",
       "workingDirectory": "${workspaceFolder}",
