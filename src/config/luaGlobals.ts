@@ -42,5 +42,6 @@ export const luaGlobals = [
     "onAction",
     "onUIEvent",
     "__onAction",
-    "_print"
+    "_print",
+    "urlencode"
 ];
