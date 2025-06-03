@@ -21,11 +21,11 @@ export async function configureLuaLanguageServer(context: vscode.ExtensionContex
         await config.update('Lua.completion.callSnippet', 'Replace', vscode.ConfigurationTarget.Global);
         console.log('HC3Emu: Set Lua completion call snippet');
         
-        // Configure diagnostics (remove the duplicate "Lua." prefix)
+        // Configure diagnostics using the imported luaGlobals array
         await config.update('Lua.diagnostics.globals', 
-            ['fibaro', 'api', 'plugin', 'net', 'json', 'class', 'QuickApp', 'QuickAppChild', 'onAction', 'onUIEvent'], 
+            luaGlobals, 
             vscode.ConfigurationTarget.Global);
-        console.log('HC3Emu: Set Lua global variables');
+        console.log(`HC3Emu: Set ${luaGlobals.length} Lua global variables:`, luaGlobals);
         
         console.log('HC3Emu: Lua Language Server configuration completed');
     } catch (error) {
