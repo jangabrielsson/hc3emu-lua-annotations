@@ -363,46 +363,23 @@ async function installTasksFromExtension(context: vscode.ExtensionContext): Prom
 
     console.log(`HC3Emu: Found ${tasksJson.tasks.length} tasks in extension`);
 
-    // Get or create .vscode/tasks.json in workspace
+    // Create new tasks.json in workspace (don't merge with existing)
     const vscodeDir = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode');
     const tasksJsonUri = vscode.Uri.joinPath(vscodeDir, 'tasks.json');
     
-    let existingTasks: any = {
+    // Create the tasks.json structure
+    const newTasks = {
         version: "2.0.0",
-        tasks: []
+        tasks: tasksJson.tasks.map((taskConfig: any) => ({
+            label: taskConfig.label,
+            type: "shell",
+            command: taskConfig.command,
+            args: taskConfig.args || [],
+            group: "build"
+        }))
     };
 
-    try {
-        const existingContent = await vscode.workspace.fs.readFile(tasksJsonUri);
-        existingTasks = JSON.parse(Buffer.from(existingContent).toString('utf8'));
-        console.log('HC3Emu: Found existing tasks.json with', existingTasks.tasks?.length || 0, 'tasks');
-    } catch (error) {
-        console.log('HC3Emu: Creating new tasks.json file');
-    }
-
-    if (!existingTasks.tasks || !Array.isArray(existingTasks.tasks)) {
-        existingTasks.tasks = [];
-    }
-
-    // Remove existing HC3Emu tasks
-    const beforeCount = existingTasks.tasks.length;
-    existingTasks.tasks = existingTasks.tasks.filter(
-        (task: any) => !task.label || !task.label.toLowerCase().includes('hc3emu')
-    );
-    const afterCount = existingTasks.tasks.length;
-    console.log(`HC3Emu: Removed ${beforeCount - afterCount} existing HC3Emu tasks`);
-
-    // Convert and add new tasks
-    const newTasks = tasksJson.tasks.map((taskConfig: any) => ({
-        label: taskConfig.label,
-        type: "shell",
-        command: taskConfig.command,
-        args: taskConfig.args || [],
-        group: "build"
-    }));
-
-    existingTasks.tasks.push(...newTasks);
-    console.log(`HC3Emu: Added ${newTasks.length} new tasks`);
+    console.log(`HC3Emu: Will create ${newTasks.tasks.length} tasks`);
 
     // Ensure .vscode directory exists
     try {
@@ -411,11 +388,11 @@ async function installTasksFromExtension(context: vscode.ExtensionContext): Prom
         // Directory might already exist
     }
 
-    // Write updated tasks.json
-    const updatedContent = JSON.stringify(existingTasks, null, 2);
+    // Write new tasks.json
+    const updatedContent = JSON.stringify(newTasks, null, 2);
     await vscode.workspace.fs.writeFile(tasksJsonUri, Buffer.from(updatedContent, 'utf8'));
     
-    console.log(`HC3Emu: Successfully installed ${newTasks.length} tasks to ${tasksJsonUri.fsPath}`);
+    console.log(`HC3Emu: Successfully created tasks.json with ${newTasks.tasks.length} tasks at ${tasksJsonUri.fsPath}`);
 }
 
 async function installDebugConfigurationsFromExtension(context: vscode.ExtensionContext): Promise<void> {
@@ -448,38 +425,17 @@ async function installDebugConfigurationsFromExtension(context: vscode.Extension
 
     console.log(`HC3Emu: Found ${launchJson.configurations.length} configurations in extension`);
 
-    // Get or create .vscode/launch.json in workspace
+    // Create new launch.json in workspace (don't merge with existing)
     const vscodeDir = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode');
     const launchJsonUri = vscode.Uri.joinPath(vscodeDir, 'launch.json');
     
-    let existingLaunch: any = {
+    // Create the launch.json structure
+    const newLaunch = {
         version: "0.2.0",
-        configurations: []
+        configurations: [...launchJson.configurations]
     };
 
-    try {
-        const existingContent = await vscode.workspace.fs.readFile(launchJsonUri);
-        existingLaunch = JSON.parse(Buffer.from(existingContent).toString('utf8'));
-        console.log('HC3Emu: Found existing launch.json with', existingLaunch.configurations?.length || 0, 'configurations');
-    } catch (error) {
-        console.log('HC3Emu: Creating new launch.json file');
-    }
-
-    if (!existingLaunch.configurations || !Array.isArray(existingLaunch.configurations)) {
-        existingLaunch.configurations = [];
-    }
-
-    // Remove existing HC3Emu configurations
-    const beforeCount = existingLaunch.configurations.length;
-    existingLaunch.configurations = existingLaunch.configurations.filter(
-        (config: any) => !config.name || !config.name.toLowerCase().includes('hc3emu')
-    );
-    const afterCount = existingLaunch.configurations.length;
-    console.log(`HC3Emu: Removed ${beforeCount - afterCount} existing HC3Emu configurations`);
-
-    // Add new configurations
-    existingLaunch.configurations.push(...launchJson.configurations);
-    console.log(`HC3Emu: Added ${launchJson.configurations.length} new configurations`);
+    console.log(`HC3Emu: Will create ${newLaunch.configurations.length} debug configurations`);
 
     // Ensure .vscode directory exists
     try {
@@ -488,11 +444,11 @@ async function installDebugConfigurationsFromExtension(context: vscode.Extension
         // Directory might already exist
     }
 
-    // Write updated launch.json
-    const updatedContent = JSON.stringify(existingLaunch, null, 2);
+    // Write new launch.json
+    const updatedContent = JSON.stringify(newLaunch, null, 2);
     await vscode.workspace.fs.writeFile(launchJsonUri, Buffer.from(updatedContent, 'utf8'));
     
-    console.log(`HC3Emu: Successfully installed ${launchJson.configurations.length} debug configurations to ${launchJsonUri.fsPath}`);
+    console.log(`HC3Emu: Successfully created launch.json with ${newLaunch.configurations.length} debug configurations at ${launchJsonUri.fsPath}`);
 }
 
 async function autoInstallConfigurations(context: vscode.ExtensionContext): Promise<void> {
@@ -520,19 +476,29 @@ async function autoInstallConfigurations(context: vscode.ExtensionContext): Prom
     const tasksJsonUri = vscode.Uri.joinPath(vscodeDir, 'tasks.json');
     const launchJsonUri = vscode.Uri.joinPath(vscodeDir, 'launch.json');
     
-    let alreadyInstalled = false;
+    let tasksFileExists = false;
+    let launchFileExists = false;
+    
     try {
-        const tasksContent = await vscode.workspace.fs.readFile(tasksJsonUri);
-        const tasksJson = JSON.parse(Buffer.from(tasksContent).toString('utf8'));
-        if (tasksJson.tasks?.some((task: any) => task.label?.includes('HC3Emu'))) {
-            console.log('HC3Emu: Tasks already installed, skipping');
-            alreadyInstalled = true;
-        }
+        await vscode.workspace.fs.stat(tasksJsonUri);
+        tasksFileExists = true;
+        console.log('HC3Emu: tasks.json already exists, skipping task installation');
     } catch (error) {
-        // File doesn't exist or parsing failed, continue with installation
+        // File doesn't exist, we can install
+        console.log('HC3Emu: tasks.json does not exist, will install');
+    }
+    
+    try {
+        await vscode.workspace.fs.stat(launchJsonUri);
+        launchFileExists = true;
+        console.log('HC3Emu: launch.json already exists, skipping debug configuration installation');
+    } catch (error) {
+        // File doesn't exist, we can install
+        console.log('HC3Emu: launch.json does not exist, will install');
     }
 
-    if (alreadyInstalled) {
+    if (tasksFileExists && launchFileExists) {
+        console.log('HC3Emu: Both configuration files already exist, skipping auto-installation');
         return;
     }
 
@@ -546,23 +512,37 @@ async function autoInstallConfigurations(context: vscode.ExtensionContext): Prom
         console.log('HC3Emu: Error searching for .lua files:', error);
     }
 
-    // Auto-install if .lua files are found
+    // Auto-install if .lua files are found and config files don't exist
     if (luaFilesFound) {
-        console.log('HC3Emu: Lua files detected, auto-installing HC3Emu configurations...');
+        console.log('HC3Emu: Lua files detected, checking what to auto-install...');
         
         try {
-            // Install tasks from extension's hc3emu2tasks.json
-            await installTasksFromExtension(context);
-            console.log('HC3Emu: Tasks auto-installed successfully');
+            let installCount = 0;
+            let installMessage = 'HC3Emu: Auto-installed ';
             
-            // Install debug configs from extension's hc3emu2launch.json  
-            await installDebugConfigurationsFromExtension(context);
-            console.log('HC3Emu: Debug configurations auto-installed successfully');
+            // Install tasks only if tasks.json doesn't exist
+            if (!tasksFileExists) {
+                await installTasksFromExtension(context);
+                console.log('HC3Emu: Tasks auto-installed successfully');
+                installCount++;
+                installMessage += 'tasks';
+            }
             
-            // Show a subtle notification
-            vscode.window.showInformationMessage(
-                'HC3Emu: Auto-installed tasks and debug configurations for Lua development'
-            );
+            // Install debug configs only if launch.json doesn't exist  
+            if (!launchFileExists) {
+                await installDebugConfigurationsFromExtension(context);
+                console.log('HC3Emu: Debug configurations auto-installed successfully');
+                if (installCount > 0) installMessage += ' and ';
+                installMessage += 'debug configurations';
+                installCount++;
+            }
+            
+            // Show notification only if something was installed
+            if (installCount > 0) {
+                vscode.window.showInformationMessage(installMessage + ' for Lua development');
+            } else {
+                console.log('HC3Emu: No installation needed, configuration files already exist');
+            }
             
         } catch (error) {
             console.error('HC3Emu: Auto-installation failed:', error);
