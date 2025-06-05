@@ -25,7 +25,7 @@ interface Hc3Emu2TasksJsonFormat {
 }
 
 export class HC3EmuTaskProvider implements vscode.TaskProvider {
-    static taskType = 'hc3emu'; // This must match the 'type' in package.json taskDefinitions
+    static taskType = 'hc3emu'; // Back to custom type
     private cachedTasks: vscode.Task[] | undefined;
     private tasksPromise: Promise<vscode.Task[]> | undefined;
 
@@ -36,7 +36,7 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
         // The definition object that VS Code will store and use to identify the task.
         // It MUST include the 'type' property matching our provider.
         const taskDefinitionForStore: HC3EmuTaskDefinition = {
-            type: HC3EmuTaskProvider.taskType,
+            type: 'hc3emu',
             label: definition.label,
             command: definition.command,
             args: definition.args,
@@ -59,14 +59,15 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
             taskDefinitionForStore,         // The unique definition of the task
             taskScope || vscode.TaskScope.Workspace, // Task scope
             definition.label,               // Name of the task (shown in UI)
-            HC3EmuTaskProvider.taskType,    // Source of the task (our extension)
+            'hc3emu',    // Source of the task (our extension)
             new vscode.ShellExecution(definition.command, definition.args || []) // How to execute it
             // You can add problemMatchers here if needed, e.g., ['$lua']
         );
     }
 
     public provideTasks(): vscode.ProviderResult<vscode.Task[]> {
-        console.log('HC3EmuTaskProvider: provideTasks() called');
+        console.log('HC3EmuTaskProvider: provideTasks() called by VS Code');
+        console.log('HC3EmuTaskProvider: Stack trace:', new Error().stack);
         if (this.cachedTasks) {
             console.log(`HC3EmuTaskProvider: Returning ${this.cachedTasks.length} cached tasks`);
             return this.cachedTasks;
@@ -94,7 +95,7 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
 
         // Check if this task definition is something our provider understands
         // (i.e., has the correct type and the required properties 'label' and 'command')
-        if (definition.type === HC3EmuTaskProvider.taskType && definition.label && definition.command) {
+        if (definition.type === 'hc3emu' && definition.label && definition.command) {
             // Re-create the task using the provided definition.
             // The 'definition' object (task.definition) already contains all necessary info.
             // Pass the original task's scope (which could be a WorkspaceFolder)
@@ -158,7 +159,7 @@ export class HC3EmuTaskProvider implements vscode.TaskProvider {
                     console.log(`HC3EmuTaskProvider: Processing task: "${taskConfig.label}"`);
                     if (taskConfig.label && taskConfig.command) {
                         const definition: HC3EmuTaskDefinition = {
-                            type: HC3EmuTaskProvider.taskType,
+                            type: 'hc3emu',
                             label: taskConfig.label,
                             command: taskConfig.command,
                             args: taskConfig.args || []

@@ -44,6 +44,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable debug logging for HC3 Emulator extension"
+                },
+                "hc3emu.autoInstallConfigurations": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically install tasks and debug configurations when HC3Emu files are detected"
                 }
             }
         },
@@ -95,22 +100,36 @@
             {
                 "command": "hc3emu.installDebugConfigs",
                 "title": "Install HC3Emu Debug Configurations"
+            },
+            {
+                "command": "hc3emu.testTasks",
+                "title": "Test HC3Emu Tasks"
+            },
+            {
+                "command": "hc3emu.installTasks",
+                "title": "Install HC3Emu Tasks"
+            },
+            {
+                "command": "hc3emu.setupDevEnvironment",
+                "title": "HC3Emu: Setup Development Environment"
             }
         ],
         "taskDefinitions": [
             {
                 "type": "hc3emu",
-                "required": [
-                    "script"
-                ],
+                "required": ["label", "command"],
                 "properties": {
-                    "script": {
+                    "label": {
                         "type": "string",
-                        "description": "The script to run"
+                        "description": "The display name for the task"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "The command to execute"
                     },
                     "args": {
                         "type": "array",
-                        "description": "Additional arguments",
+                        "description": "Arguments for the command",
                         "items": {
                             "type": "string"
                         }

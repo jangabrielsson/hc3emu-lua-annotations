@@ -34,12 +34,6 @@
           "${input:QA_id}",
           "${input:path_id}"
         ]
-      },
-      {
-        "label": "Test picker",
-        "type": "shell",
-        "command": "echo",
-        "args": [ "${input:pickEnvFile}" ]
       }
     ],
     "inputs": [
