@@ -367,8 +367,8 @@ async function installTasksFromExtension(context: vscode.ExtensionContext): Prom
     const vscodeDir = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode');
     const tasksJsonUri = vscode.Uri.joinPath(vscodeDir, 'tasks.json');
     
-    // Create the tasks.json structure
-    const newTasks = {
+    // Create the tasks.json structure with inputs
+    const newTasks: any = {
         version: "2.0.0",
         tasks: tasksJson.tasks.map((taskConfig: any) => ({
             label: taskConfig.label,
@@ -378,6 +378,12 @@ async function installTasksFromExtension(context: vscode.ExtensionContext): Prom
             group: "build"
         }))
     };
+
+    // Add inputs if they exist in the source file
+    if (tasksJson.inputs && Array.isArray(tasksJson.inputs) && tasksJson.inputs.length > 0) {
+        newTasks.inputs = tasksJson.inputs;
+        console.log(`HC3Emu: Including ${tasksJson.inputs.length} input definitions`);
+    }
 
     console.log(`HC3Emu: Will create ${newTasks.tasks.length} tasks`);
 

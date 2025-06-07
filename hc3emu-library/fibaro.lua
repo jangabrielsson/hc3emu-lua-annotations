@@ -44,7 +44,7 @@ function api.put(path, data) end
 ---@return number status The HTTP status code
 function api.delete(path) end
 
----Global __TAG variable for QuickApp identification
+---Global __TAG variable for QuickApp identification used in log output
 ---@type string
 __TAG = ""
 
