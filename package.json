@@ -2,7 +2,7 @@
     "name": "hc3emu-helper",
     "displayName": "HC3Emu helper",
     "description": "Snippets and Lua Language Server support for HC3Emu Lua scripts.",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "license": "MIT",
     "publisher": "GsonSoft-development",
     "icon": "logo.png",
