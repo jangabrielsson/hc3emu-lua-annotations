@@ -33,8 +33,7 @@
         "-e",
         "\"require('hc3emu2')\"",
         "updateQA",
-        "${relativeFile}",
-        "-develop"
+        "${relativeFile}"
       ],
       "group": "build"
     },
